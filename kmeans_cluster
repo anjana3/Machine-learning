@@ -1,0 +1,30 @@
+# K-Means Clustering
+
+# Importing the libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import pdb
+
+# Importing the dataset
+dataset = pd.read_csv("/home/anjana/anjana/csv/bq.csv")
+X = dataset.iloc[:, [1, 2, 3, 4]].values
+from sklearn.cluster import KMeans
+
+# Fitting K-Means to the dataset
+kmeans = KMeans(n_clusters=4, init="k-means++", random_state=42)
+y_kmeans = kmeans.fit_predict(X)
+dataset["cluster"] = y_kmeans
+dataset.to_csv("cluster_4.csv", index=False)
+# find the clusters with k=6
+kmeans_6 = KMeans(n_clusters=6, init="k-means++", random_state=42)
+y_kmeans_6 = kmeans_6.fit_predict(X)
+dataset["cluster"] = y_kmeans_6
+dataset.to_csv("cluster_6.csv", index=False)
+# find the clusters with k=8
+kmeans_8 = KMeans(n_clusters=8, init="k-means++", random_state=42)
+y_kmeans_8 = kmeans_8.fit_predict(X)
+dataset["cluster"] = y_kmeans_8
+print(dataset.head())
+dataset.to_csv("cluster_8.csv", index=False)
+
