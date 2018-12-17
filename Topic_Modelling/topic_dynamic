@@ -1,0 +1,140 @@
+from google.cloud import bigquery
+import pandas as pd
+import numpy as np
+import gensim
+import gensim.corpora as corpora
+from gensim.utils import simple_preprocess
+import spacy
+from spacy.lang.en import English
+import pyLDAvis
+import pyLDAvis.gensim
+import nltk
+from nltk.corpus import stopwords
+from datetime import datetime
+import warnings
+warnings.filterwarnings('ignore')
+
+
+def sent_to_words(sentences):
+    for sentence in sentences:
+        # convert sentence (string) to list of words ignoring any words
+        # that are too small (len 2) or too large (len 15)
+        #print(sentence)
+        yield (gensim.utils.simple_preprocess(str(sentence)))
+
+
+def lemmatization(texts):
+    texts_out = []
+    for sent in texts:
+        # loading spacy 'english i.e en module'
+        nlp = English()
+        doc = nlp(" ".join(sent))
+        texts_out.append(
+            [token.lemma_ for token in doc]
+        )
+    return texts_out
+
+
+def lda_model():
+    client = bigquery.Client()
+    query = ('SELECT Name FROM `sandbox-211511.News_dataset.data_news`')
+    query_job = client.query(query)
+    rows = query_job.result()
+    news = []
+    for row in rows:
+        news.append((row.Name))
+    data = pd.DataFrame(news)
+    # download stopwords from nltk
+    nltk.download('stopwords')
+
+    # reading data
+    start_time = datetime.now()
+    stop_words = stopwords.words("english")
+    data1 = data.values.tolist()
+    print(
+        "Time taken to read input: %s" % str(
+            datetime.now() - start_time
+        )[:-3]
+    )
+    # tokenzing sentences to list of words,removing punctuations and unnecessary characters
+    start_time = datetime.now()
+    data1_words = list(sent_to_words(data1))
+    print(data1_words[:1])
+    print(
+        "Time taken to for simple_preprocess: %s" % str(
+            datetime.now() - start_time
+        )[:-3]
+    )
+
+    # removing stopwords for list of words
+    start_time = datetime.now()
+    data1_words_nostops = (
+        [word for word in simple_preprocess(
+            str(doc)) if word not in stop_words]
+        for doc in data1_words)
+    print(
+        "Time taken to remove stopwords: %s" % str(
+            datetime.now() - start_time
+        )[:-3]
+    )
+    # forming bigrams and trigrams
+    # if threshold value is high then few phrases available
+    start_time = datetime.now()
+    bigram = gensim.models.Phrases(data1_words, min_count=5, threshold=100)
+    trigram = gensim.models.Phrases(bigram[data1_words], threshold=100)
+    bigram_model = gensim.models.phrases.Phraser(bigram)
+    trigram_model = gensim.models.phrases.Phraser(trigram)
+
+    data1_words_bigrams = [bigram_model[doc] for doc in data1_words_nostops]
+    trigram_words = [trigram_model[bigram_model[doc]]
+                     for doc in data1_words_nostops]
+    print(
+        "Time taken for bigram and trigram models: %s" % str(
+            datetime.now() - start_time
+        )[:-3]
+    )
+
+    print(len(trigram_words))
+
+    # lemmatizing keeping only noun,adjective,verb and adverb
+    start_time = datetime.now()
+    data1_lemmatized = lemmatization(
+        data1_words_bigrams
+    )
+    print(data1_lemmatized[:1])
+    print(
+        "Time taken for lemmatization: %s" % str(
+            datetime.now() - start_time
+        )[:-3]
+    )
+
+    # creating dictionary and corpus for lda_model
+    start_time = datetime.now()
+    id2word = corpora.Dictionary(data1_lemmatized)
+    corpus = [id2word.doc2bow(text) for text in data1_lemmatized]
+    print(
+        "Time taken for dictionary and corpus: %s" % str(
+            datetime.now() - start_time
+        )[:-3]
+    )
+
+    # LDA model
+    start_time = datetime.now()
+    lda_model = gensim.models.ldamodel.LdaModel(
+        corpus=corpus,
+        id2word=id2word,
+        num_topics=10
+    )
+    print(
+        "Time taken for lda_model: %s" % str(
+            datetime.now() - start_time
+        )[:-3]
+    )
+    print(lda_model.print_topics())
+
+    # visulazing topics with keywords using pyLDAvis
+    vis = pyLDAvis.gensim.prepare(lda_model, corpus, id2word)
+    pyLDAvis.save_html(vis, "output/LDA_Visualization.html")
+    
+    if __name__ == "__main__":
+    lda_model()
