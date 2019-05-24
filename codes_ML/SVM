@@ -1,0 +1,23 @@
+heart_df=readxl::read_xlsx("D:/venkat sir/hd.xlsx")
+library(caret)
+set.seed(3033)
+
+intrain <- createDataPartition(y = heart_df$Disease, p= 0.7, list = FALSE)
+#creating training and testing datasets for the model
+training <- heart_df[intrain,]
+testing <- heart_df[-intrain,]
+training[["Disease"]] = factor(training[["Disease"]])
+testing[["Disease"]] = factor(testing[["Disease"]])
+
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+set.seed(3233)
+#building a model with svm
+svm_Linear <- train(Disease ~., data = hear_dis, method = "svmLinear",
+                    trControl=trctrl,
+                    preProcess = c("center", "scale"),
+                    tuneLength = 10)
+#test with new data
+test_pred <- predict(svm_Linear, newdata = hear_dis)
+#to get the confusion matrix
+confusionMatrix(test_pred, hear_dis$Disease )
+
