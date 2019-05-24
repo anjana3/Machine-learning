@@ -1,0 +1,48 @@
+library(caret)
+library(rpart.plot)
+library(rpart)
+#importing the dataset from local
+hear_dis=readxl::read_xlsx("D:/venkat sir/hd.xlsx")
+#to see the strucure of the dataset
+str(hear_dis)
+training <- hear_dis
+testing <- hear_dis
+#check dimensions of train & test set
+dim(training)
+dim(testing)
+#to check missing values and null values
+anyNA(hear_dis)
+set.seed(303)
+trctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 2)
+dtree_fit <- train(as.factor(Disease) ~., data = training, method = "rpart",
+                   parms = list(split = "information"),
+                   trControl=trctrl,
+                   tuneLength = 5)
+
+dtree_fit
+test_pred <- predict(dtree_fit, newdata = testing[1:13])
+confusionMatrix(test_pred, as.factor(testing$Disease ))  #check accuracy
+accuracy_dec<-round((95+136)/(95+25+14+136),2)
+accuracy_dec
+#sensitivity and specificity
+sensitivity<- round(95/(14+95),2)
+specificity <- round(136/(136+25),2)
+sprintf("Sensitivity at 0.5 threshold: %s", sensitivity)
+sprintf("Specificity at 0.5 threshold: %s", specificity)
+#precision (pre)
+pre_dec<-round(95/(95+25),2)
+sprintf("Precision(PRE): %s", pre_dec)
+#negative predictive value(npv)
+npv_dec<-round(136/(136+14),2)
+sprintf("negative predictive value(NPV): %s", npv_dec)
+#False positive rate(FPR)
+fpr_dec<-round(25/(25+136),2)
+sprintf("False positive rate(FPR): %s", fpr_dec)
+#rate of missclassification
+MC_0.5 <- 1-accuracy_dec
+sprintf("Mis-classification error is %s",MC_0.5)
+#measure(F1)
+recall<-round(95/(95+14),2)
+f1_dec<-round(2*(pre*recall)/(pre+recall),2)
+f1_dec
+
